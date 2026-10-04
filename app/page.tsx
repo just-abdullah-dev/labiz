@@ -1,69 +1,127 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { LockScreen } from '@/components/LockScreen';
+import { ClassList } from '@/components/ClassList';
+import { ClassDetail } from '@/components/ClassDetail';
+import { MarkingScreen } from '@/components/MarkingScreen';
+import { ExportScreen } from '@/components/ExportScreen';
+import { SettingsScreen } from '@/components/SettingsScreen';
+import { BottomNav, NavTab } from '@/components/BottomNav';
+import { UndoSnackbar, UndoAction } from '@/components/UndoSnackbar';
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+  const [isLocked, setIsLocked] = useState<boolean>(true);
+  const [currentTab, setCurrentTab] = useState<NavTab>('classes');
+  const [activeClassId, setActiveClassId] = useState<string | null>(null);
+  const [activeLabId, setActiveLabId] = useState<string | null>(null);
+  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
+  const [justFinishedLab, setJustFinishedLab] = useState<boolean>(false);
+
+  // Background inactivity tracking (FR1: lock after 5 minutes in background)
+  const lastHiddenTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenTimeRef.current = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        if (lastHiddenTimeRef.current) {
+          const elapsed = Date.now() - lastHiddenTimeRef.current;
+          const FIVE_MINUTES_MS = 5 * 60 * 1000;
+          if (elapsed >= FIVE_MINUTES_MS) {
+            setIsLocked(true);
+          }
+        }
+        lastHiddenTimeRef.current = null;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // 5-second automatic dismiss for Undo snackbar (FR4)
+  useEffect(() => {
+    if (!undoAction) return;
+    const timer = setTimeout(() => {
+      setUndoAction(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [undoAction]);
+
+  if (isLocked) {
+    return <LockScreen onUnlock={() => setIsLocked(false)} />;
+  }
+
+  // Active Marking Screen takes full focus (back button returns to class)
+  if (activeLabId) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col">
+        <MarkingScreen
+          labSessionId={activeLabId}
+          onBack={() => setActiveLabId(null)}
+          onUndoActionChange={(action) => setUndoAction(action)}
+          onLabFinished={() => setJustFinishedLab(true)}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        <UndoSnackbar
+          action={undoAction}
+          onDismiss={() => setUndoAction(null)}
+        />
+      </div>
+    );
+  }
+
+  // Active Class Detail (Labs list & Students management)
+  if (activeClassId) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <ClassDetail
+          classId={activeClassId}
+          onBack={() => setActiveClassId(null)}
+          onOpenLab={(labId) => setActiveLabId(labId)}
+        />
+        <BottomNav
+          currentTab={currentTab}
+          onTabChange={(tab) => {
+            setActiveClassId(null);
+            setCurrentTab(tab);
+          }}
+        />
+        <UndoSnackbar
+          action={undoAction}
+          onDismiss={() => setUndoAction(null)}
+        />
+      </div>
+    );
+  }
+
+  // Tab views
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {currentTab === 'classes' && (
+        <ClassList
+          onSelectClass={(classId) => setActiveClassId(classId)}
+          justFinishedLab={justFinishedLab}
+          onClearJustFinishedLab={() => setJustFinishedLab(false)}
+        />
+      )}
+      {currentTab === 'export' && <ExportScreen />}
+      {currentTab === 'settings' && <SettingsScreen />}
+
+      <BottomNav
+        currentTab={currentTab}
+        onTabChange={(tab) => {
+          setActiveClassId(null);
+          setCurrentTab(tab);
+        }}
+      />
+      <UndoSnackbar
+        action={undoAction}
+        onDismiss={() => setUndoAction(null)}
+      />
     </div>
   );
 }

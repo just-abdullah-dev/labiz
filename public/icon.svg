@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#15803d"/>
+  <rect x="96" y="96" width="320" height="320" rx="32" fill="#ffffff" stroke="#16a34a" stroke-width="12"/>
+  <path d="M192 96V72a24 24 0 0 1 24-24h80a24 24 0 0 1 24 24v24" fill="#16a34a"/>
+  <!-- Checkmark / Viva check -->
+  <circle cx="256" cy="240" r="70" fill="#dcfce7"/>
+  <path d="M220 240l24 24 48-48" fill="none" stroke="#15803d" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Text line indicators -->
+  <rect x="156" y="340" width="200" height="16" rx="8" fill="#15803d"/>
+  <rect x="186" y="372" width="140" height="12" rx="6" fill="#86efac"/>
+</svg>

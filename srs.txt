@@ -1,0 +1,90 @@
+# Lab Viva Marker PWA: SRS Build Prompt
+
+**Role:** You are a senior front-end engineer. Build the app below exactly as specified. Prefer simplicity, speed and reliability over extra features. Do not add features that are not listed.
+
+## 1. Purpose
+A phone-first, offline PWA for one lab engineer. During a lab he walks around, asks each student a viva question and taps a remark against the student's name. Remarks are stored locally and later exported to Excel for grading. Attendance is handled elsewhere (university CMS) and is **out of scope**.
+
+## 2. Users and Context
+- Single user (lab engineer), used on a phone, standing, one-handed, often in poor WiFi.
+- 3 classes (about 51, 41, 30 students). One lab per week per class.
+- Speed of marking is the top priority: **one tap = one saved remark.**
+
+## 3. Tech Stack
+- Vite + React + TypeScript, `vite-plugin-pwa` (service worker, manifest, installable, offline).
+- IndexedDB via Dexie for all data. No backend, no network calls, no analytics.
+- SheetJS (`xlsx`) for Excel import/export. Deploy as static site on Vercel.
+- Light theme only. Mobile-first layout (360-430 px width), works on desktop too.
+
+## 4. Data Model
+- **Class**: id, courseTitle, section, session (e.g. "Programming Fundamentals Lab", "O", "FALL-2026").
+- **Student**: id, classId, serialNo, regNo (unique per class), name, batch. Import **only** these fields. Do not store emails or phone numbers.
+- **LabSession**: id, classId, labNo, date (default today, editable).
+- **Entry**: id, labSessionId, studentId, remarkKey (nullable), note (optional), updatedAt. Unique per (labSessionId, studentId).
+- **RemarkScale** (editable in Settings, hidden numbers, default below):
+
+| Remark | Marks (hidden) | Colour |
+|---|---|---|
+| Excellent | 10 | dark green |
+| Very Good | 8 | green |
+| Good | 7 | light green |
+| Satisfactory | 5 | yellow |
+| Weak | 3 | orange |
+| Unsatisfactory | 1 | red |
+| *(no remark)* | 0 | grey |
+
+Marks are never shown on the marking screen. No remark means absent or left early, and exports as blank remark with marks 0.
+
+## 5. Functional Requirements
+**FR1 Login.** First launch: set a 4-6 digit PIN (or password). Stored only as a salted hash (PBKDF2/SHA-256). Required on open and after 5 minutes in background. Forgot PIN: only path is "Reset app" (wipes data), so the backup restore path must be visible on the lock screen. Note in Settings that this is a local privacy lock, not server security.
+
+**FR2 Classes and import.** Home lists classes with student count. "Add class" imports an `.xlsx` in the university format:
+- Rows 1-2 contain Course Title, Section, Session. The header row is `S# | Reg No. | Student Name | Batch | ...`. Detect the header row by finding the "Reg No." cell instead of hard-coding a row number.
+- Trim names and collapse repeated spaces. Skip rows with empty Reg No.
+- Re-importing into an existing class: match by Reg No, add new students, update changed names, and **list students missing from the sheet for confirmation. Never auto-delete.**
+- Manual add, edit and delete of a student inside a class (delete asks for confirmation and warns that the student's entries are deleted).
+
+**FR3 Lab sessions.** Inside a class: "New lab" auto-fills next lab number and today's date (both editable). List of past labs with marked count (e.g. 41/51). Opening a past lab allows editing.
+
+**FR4 Marking screen (core).**
+- Sticky top bar: class + lab no + date, search box (name or reg no, live filter, case-insensitive), progress "23/51 marked", filter chips: All / Unmarked / Marked.
+- Student row: serial no, name, reg no. Tap the row to expand inline into a 2x3 grid of large remark buttons (min 56 px height, coloured, label only).
+- Tapping a remark saves **instantly** (write to IndexedDB before UI feedback finishes, no save button), collapses the row, shows a coloured remark badge, short haptic vibration, and scrolls to the next unmarked student.
+- Tapping the same remark again clears it. Tapping a different remark replaces it. A 5-second "Undo" snackbar follows every change.
+- Optional note: small note icon per row opens a one-line text field; notes are secondary and never block marking.
+- Unmarked rows stay visually neutral so missed students are obvious.
+
+**FR5 Export.** Per class: choose one lab or all labs, then download `.xlsx` (and `.csv` option). Sheet "Marks", one row per student per lab, columns exactly:
+`Name | Reg No | Lab No | Date Time | Remarks | Marks | Notes`
+(Date Time = when the remark was last saved; unmarked rows have blank remark, Marks 0.) Optional second sheet "Summary": Reg No, Name, one column of marks per lab, Total. Use the Web Share API where available so the file can go to WhatsApp, Drive or email.
+
+**FR6 Backup and restore.**
+- "Backup now" downloads a single `.json` of all data (or shares it via Web Share). "Restore" loads that file, with a preview of what will be replaced.
+- Show "Last backup: N days ago" on Home. Show a gentle reminder banner if over 7 days or after finishing a lab.
+
+**FR7 Settings.** Edit remark names, marks and order (keeping at least 6 levels), change PIN, backup/restore, reset app.
+
+## 6. Non-Functional Requirements
+- **Speed:** tap-to-visual-feedback under 100 ms; lists of 60 students scroll smoothly.
+- **Offline:** everything works with no connection after first load. Service worker caches all assets.
+- **Data safety:** call `navigator.storage.persist()` on first launch. Write on every change (no batching that could lose data on tab close). Handle storage errors visibly, never silently.
+- **Touch UX:** all targets at least 48 px, no hover-only interactions, no accidental double-tap zoom, safe-area padding, portrait first.
+- **Privacy:** no phone numbers or emails stored; nothing leaves the device unless the user exports or backs up.
+- **Accessibility:** readable contrast, remark shown as text plus colour (never colour alone).
+
+## 7. Screens
+Lock, Home (classes), Class (labs + students management), Marking, Export, Settings. Bottom nav: Classes, Export, Settings. Simple, uncluttered, large type.
+
+## 8. Out of Scope
+Attendance, multi-user or cloud sync, student-facing views, charts and analytics, dark mode, push notifications.
+
+## 9. Acceptance Criteria
+1. The sample university `.xlsx` imports correctly into a class with clean names and unique Reg Nos.
+2. In a 51-student lab, any student can be marked with two taps (row, remark) and found by typing part of a name or reg no.
+3. Closing the app, going offline and reopening after a restart preserves all marks.
+4. Export opens in Excel with exactly the columns in FR5, and unmarked students show Marks 0.
+5. Backup then reset then restore returns identical data.
+6. The app installs on an Android/iOS home screen and runs full screen.
+
+## 10. Deliverables
+Full project source, `README` with Vercel deploy steps, PWA icons, and a short list of any assumptions you made.
