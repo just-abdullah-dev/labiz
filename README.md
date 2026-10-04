@@ -168,6 +168,17 @@ node scripts/test-acceptance.js
 
 ---
 
+## 🏫 Designed for Pak-Austria Fachhochschule (PAF-IAST)
+
+This tool was specifically engineered to streamline practical laboratory assessments and oral viva evaluations at **Pak-Austria Fachhochschule: Institute of Applied Sciences and Technology (PAF-IAST)**, Haripur, Khyber Pakhtunkhwa, Pakistan ([paf-iast.edu.pk](https://paf-iast.edu.pk/)).
+
+- **Native Support for PAF-IAST CMS / Student Roster Sheets**: Pre-configured to ingest standardized student roster sheets exported from the PAF-IAST CMS across departments, including the **Faculty of Computing, Art, Architecture & Design (FCAAD)** and the **Faculty of Engineering, Sciences & Technology (FEST)** (supporting programs such as Electrical Engineering `BEE`, Mechanical `BMCET`, Software Engineering `BSSE`, Computer Science `BSCS`, and Artificial Intelligence `BSAI`).
+- **Dynamic University Header Parsing**: Automatically detects PAF-IAST academic headers (`Course Title`, `Section`, `Session`, `S#`, `Reg No.`, `Student Name`, `Batch`).
+- **Built for PAF-IAST Lab Engineers & Course Instructors**: Empowers instructors walking through state-of-the-art PAF-IAST labs to mark student vivas at high speed with single-tap haptics, full offline reliability, and 1-click export directly matching university grading and examination formats.
+
+---
+
 ## 📜 License
 
 Distributed under the **MIT License**. Free for university departments, schools, educators, and independent developers. Contributions, issues, and feature suggestions are welcome!
+
